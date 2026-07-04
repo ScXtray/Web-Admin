@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xtray Admin Control</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Poppins', sans-serif;
+  background: #0a0612;
+  background-image: radial-gradient(ellipse at top, rgba(124,58,237,0.08), transparent 60%);
+  color: #e5e5e5;
+  min-height: 100vh;
+  padding-bottom: 90px;
+}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+/* AUTH */
+#auth-screen {
+  position: fixed; inset: 0; background: #0a0612; z-index: 999;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background-image: radial-gradient(ellipse at top, rgba(124,58,237,0.12), transparent 60%);
+}
+.auth-box {
+  background: rgba(20,14,32,0.9); border: 1px solid rgba(168,85,247,0.2);
+  border-radius: 18px; padding: 30px 24px; max-width: 320px; width: 100%; text-align: center;
+}
+.auth-icon {
+  width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 16px;
+  background: rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.3);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; color: #a855f7;
+}
+.auth-box h1 { font-size: 13px; letter-spacing: 2px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; }
+.auth-box p { font-size: 10.5px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-bottom: 18px; }
+.auth-box input {
+  width: 100%; padding: 13px; border-radius: 12px; margin-bottom: 12px; font-size: 13px; font-weight: 600;
+  background: #06040c; border: 1px solid rgba(255,255,255,0.08); color: #fff; outline: none;
+}
+.auth-box input:focus { border-color: #a855f7; }
+.auth-box button {
+  width: 100%; padding: 13px; border-radius: 12px; border: none; cursor: pointer;
+  background: linear-gradient(90deg,#7c3aed,#db2777); color: #fff; font-weight: 800;
+  font-size: 11.5px; letter-spacing: 1.5px; text-transform: uppercase;
+}
+.auth-err { display: none; font-size: 10.5px; color: #f87171; font-weight: 700; margin-top: 12px; }
+
+/* HEADER */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px; gap: 10px;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon {
+  width: 36px; height: 36px; border-radius: 10px; background: #1a1428;
+  border: 1px solid rgba(168,85,247,0.3); display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 16px; color: #a855f7;
+}
+.logo-text { font-weight: 800; font-size: 14px; letter-spacing: 0.5px; }
+.logo-sub { font-size: 9.5px; color: #888; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.header-actions { display: flex; gap: 6px; }
+.hbtn {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  color: #ccc; border-radius: 9px; padding: 8px 11px; font-size: 10.5px; font-weight: 700;
+  text-decoration: none; cursor: pointer; white-space: nowrap;
+}
+.hbtn.danger { color: #f87171; border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.08); }
+
+/* NAV TABS */
+.nav-wrap { padding: 0 18px 12px; }
+.nav-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(168,85,247,0.15);
+  border-radius: 14px; padding: 5px;
+}
+.ntab {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 9px 2px; border-radius: 10px; font-size: 9px; font-weight: 700;
+  color: #888; cursor: pointer; border: 1px solid transparent; text-align: center;
+}
+.ntab i { font-size: 15px; }
+.ntab.active { background: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.5); color: #fff; }
+
+.container { max-width: 720px; margin: 0 auto; padding: 0 18px; }
+.page { display: none; }
+.page.active { display: block; }
+
+.card {
+  background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px; padding: 16px; margin-bottom: 14px;
+}
+.card h2 {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 7px; margin-bottom: 12px; color: #c084fc;
+}
+.card h2 i { font-size: 12px; }
+
+/* DASHBOARD STATS */
+.stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 14px; }
+.stat-box {
+  background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px; padding: 10px 6px; text-align: center;
+}
+.stat-box .lbl { font-size: 8px; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.stat-box .val { font-size: 15px; font-weight: 800; color: #fff; margin-top: 3px; }
+.stat-box.warn .val { color: #f59e0b; }
+.stat-box.ok .val { color: #22c55e; }
+
+.field-label { font-size: 9.5px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
+input[type=text], input[type=password], input[type=file], select, textarea {
+  width: 100%; padding: 11px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 500;
+  background: #0d0918; border: 1px solid rgba(255,255,255,0.08); color: #fff; outline: none; font-family: inherit;
+}
+input:focus, select:focus, textarea:focus { border-color: #a855f7; }
+textarea { resize: vertical; font-family: 'Courier New', monospace; color: #86efac; font-size: 11.5px; }
+.field { margin-bottom: 10px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.btn {
+  width: 100%; padding: 12px; border-radius: 11px; border: none; cursor: pointer;
+  font-weight: 800; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.btn-primary { background: linear-gradient(90deg,#7c3aed,#db2777); color: #fff; }
+.btn-green { background: #16a34a; color: #fff; }
+.btn-purple { background: #7c3aed; color: #fff; }
+.btn-outline { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #ccc; }
+
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+.switch { position: relative; width: 42px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; inset: 0; background: rgba(255,255,255,0.1);
+  border-radius: 24px; transition: .2s;
+}
+.slider:before {
+  content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px;
+  background: #fff; border-radius: 50%; transition: .2s;
+}
+input:checked + .slider { background: #a855f7; }
+input:checked + .slider:before { transform: translateX(18px); }
+
+.list-item {
+  background: #0d0918; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 8px; font-size: 11.5px;
+}
+.list-item .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.list-item .name { font-weight: 700; color: #fff; }
+.list-item .meta { font-size: 9.5px; color: #888; margin-top: 2px; }
+.mini-btn {
+  font-size: 9px; font-weight: 800; border-radius: 7px; padding: 5px 9px; border: none; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0;
+}
+.mini-btn.del { background: rgba(248,113,113,0.12); color: #f87171; }
+.mini-btn.done { background: rgba(34,197,94,0.12); color: #4ade80; }
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip {
+  display: flex; align-items: center; gap: 6px; background: rgba(168,85,247,0.1);
+  border: 1px solid rgba(168,85,247,0.25); color: #c084fc; font-size: 10.5px; font-weight: 700;
+  border-radius: 8px; padding: 5px 8px 5px 10px;
+}
+.chip button { background: none; border: none; color: #f87171; cursor: pointer; font-size: 11px; }
+
+.empty { text-align: center; padding: 26px 10px; color: #666; font-size: 11px; font-weight: 600; }
+
+/* CHAT */
+.chat-box { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.msg { max-width: 80%; padding: 8px 11px; border-radius: 12px; font-size: 11.5px; position: relative; }
+.msg.user { align-self: flex-start; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); }
+.msg.admin { align-self: flex-end; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.3); }
+.msg .who { font-size: 8.5px; font-weight: 800; opacity: 0.6; margin-bottom: 2px; text-transform: uppercase; }
+.msg .del-x { position: absolute; top: -6px; right: -6px; background: #1f1530; border: 1px solid rgba(255,255,255,0.15); color: #f87171; width: 16px; height: 16px; border-radius: 50%; font-size: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.chat-input-row { display: flex; gap: 8px; }
+.chat-input-row input { flex: 1; }
+.chat-input-row button { flex-shrink: 0; padding: 0 16px; border-radius: 10px; border: none; background: #7c3aed; color: #fff; font-weight: 800; font-size: 12px; }
+
+.badge-type { font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; }
+.badge-lapor { background: rgba(248,113,113,0.12); color: #f87171; }
+.badge-saran { background: rgba(96,165,250,0.12); color: #60a5fa; }
+
+@media (max-width:340px){ .stat-grid{grid-template-columns:repeat(2,1fr);} }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-icon"><i class="fa-solid fa-shield-halved"></i></div>
+    <h1>Xtray Admin</h1>
+    <p>Masukkan Password Untuk Akses</p>
+    <input type="password" id="auth-pass" placeholder="Password..." onkeydown="if(event.key==='Enter')checkAuth()">
+    <button onclick="checkAuth()">Masuk</button>
+    <p id="auth-err" class="auth-err">Password salah! Coba lagi.</p>
+  </div>
+</div>
+
+<!-- MAIN PANEL -->
+<div id="main-panel" style="display:none;">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">X</div>
+      <div>
+        <div class="logo-text">XTRAY <span style="color:#a855f7">ADMIN</span></div>
+        <div class="logo-sub">System Control</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a href="https://xtray-site.netlify.app" target="_blank" class="hbtn"><i class="fa-solid fa-arrow-up-right-from-square"></i> Lihat Web</a>
+      <button onclick="logout()" class="hbtn danger"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+  </header>
+
+  <div class="nav-wrap">
+    <div class="nav-grid">
+      <div class="ntab active" onclick="setPage('dashboard',this)"><i class="fa-solid fa-gauge-high"></i>Dashboard</div>
+      <div class="ntab" onclick="setPage('skrip',this)"><i class="fa-solid fa-scroll"></i>Kelola Skrip</div>
+      <div class="ntab" onclick="setPage('chat',this)"><i class="fa-solid fa-comments"></i>Live Chat</div>
+      <div class="ntab" onclick="setPage('inbox',this)"><i class="fa-solid fa-inbox"></i>Pesan Masuk</div>
+      <div class="ntab" onclick="setPage('faq',this)"><i class="fa-solid fa-circle-question"></i>FAQ</div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- PAGE: DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="stat-grid">
+        <div class="stat-box"><div class="lbl">Total File</div><div class="val" id="st-files">0</div></div>
+        <div class="stat-box"><div class="lbl">Total Download</div><div class="val" id="st-downloads">0</div></div>
+        <div class="stat-box warn"><div class="lbl">Pesan Masuk</div><div class="val" id="st-inbox">0</div></div>
+        <div class="stat-box ok"><div class="lbl">Status Server</div><div class="val" style="font-size:11px;">ONLINE</div></div>
+      </div>
+
+      <div class="card">
+        <h2><i class="fa-solid fa-sliders"></i> Konfigurasi Sistem</h2>
+        <div class="toggle-row">
+          <span style="font-size:12px;font-weight:600;">Mode Maintenance</span>
+          <label class="switch"><input type="checkbox" id="cfg-maintenance"><span class="slider"></span></label>
+        </div>
+        <div class="field" style="margin-top:10px;">
+          <label class="field-label">Pesan Maintenance</label>
+          <input type="text" id="cfg-maintenance-msg" placeholder="Website sedang dalam perbaikan...">
+        </div>
+        <div class="field">
+          <label class="field-label">Teks Marquee / Bulletin (Live di Web)</label>
+          <input type="text" id="cfg-marquee" placeholder="Contoh: Selamat datang di Xtray Files! Update terbaru...">
+        </div>
+        <button class="btn btn-primary" onclick="saveConfig()"><i class="fa-solid fa-floppy-disk"></i> Simpan Konfigurasi</button>
+      </div>
+    </div>
+
+    <!-- PAGE: KELOLA SKRIP -->
+    <div class="page" id="page-skrip">
+      <div class="card">
+        <h2><i class="fa-solid fa-cloud-arrow-up"></i> Upload Script / File Baru</h2>
+        <div class="field"><label class="field-label">Nama</label><input type="text" id="up-name" placeholder="Nama script / file"></div>
+        <div class="field"><label class="field-label">Deskripsi</label><input type="text" id="up-desc" placeholder="Deskripsi singkat"></div>
+        <div class="row2">
+          <div class="field">
+            <label class="field-label">Tipe</label>
+            <select id="up-type"><option value="script">📜 Script</option><option value="executor">⚡ Executor</option><option value="cheat">🎮 Cheat</option><option value="file">📄 File</option></select>
+          </div>
+          <div class="field">
+            <label class="field-label">Kategori Game</label>
+            <select id="up-category"></select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label class="field-label">Ukuran</label>
+            <select id="up-size"><option value="Kecil">Kecil</option><option value="Sedang">Sedang</option><option value="Besar">Besar</option></select>
+          </div>
+          <div class="field"><label class="field-label">Versi (opsional)</label><input type="text" id="up-version" placeholder="v1.0.0"></div>
+        </div>
+        <div class="field"><label class="field-label">Link Download</label><input type="text" id="up-link" placeholder="https://..."></div>
+        <button class="btn btn-primary" onclick="publishFile()"><i class="fa-solid fa-cloud-arrow-up"></i> Publish</button>
+      </div>
+
+      <div class="card">
+        <h2><i class="fa-solid fa-folder-tree"></i> Kategori Game</h2>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="new-category" placeholder="Nama game baru..." style="flex:1;">
+          <button class="btn btn-purple" style="width:auto;padding:0 16px;" onclick="addCategory()">Simpan</button>
+        </div>
+        <div class="chip-row" id="category-list"></div>
+      </div>
+
+      <div class="card">
+        <h2><i class="fa-solid fa-database"></i> Database Skrip</h2>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input type="text" id="db-search" placeholder="Cari nama file..." oninput="renderDb()" style="flex:1;">
+          <button class="btn btn-outline" style="width:auto;padding:0 14px;" onclick="backupJson()"><i class="fa-solid fa-download"></i></button>
+        </div>
+        <div id="db-list"></div>
+      </div>
+    </div>
+
+    <!-- PAGE: LIVE CHAT -->
+    <div class="page" id="page-chat">
+      <div class="card">
+        <h2><i class="fa-solid fa-comments"></i> Global Chat Moderator</h2>
+        <div class="chat-box" id="chat-box"></div>
+        <div class="chat-input-row" style="margin-bottom:10px;">
+          <input type="text" id="chat-msg" placeholder="Kirim pesan sebagai Admin..." onkeydown="if(event.key==='Enter')sendChat()">
+          <button onclick="sendChat()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+        <button class="btn btn-outline" onclick="wipeChat()" style="color:#f87171;"><i class="fa-solid fa-trash"></i> Wipe All Chat</button>
+      </div>
+    </div>
+
+    <!-- PAGE: PESAN MASUK -->
+    <div class="page" id="page-inbox">
+      <div class="card">
+        <h2><i class="fa-solid fa-inbox"></i> Kotak Masuk Laporan &amp; Saran</h2>
+        <div id="inbox-list"></div>
+      </div>
+    </div>
+
+    <!-- PAGE: FAQ MANAGER -->
+    <div class="page" id="page-faq">
+      <div class="card">
+        <h2><i class="fa-solid fa-circle-plus"></i> Tambah FAQ</h2>
+        <div class="field"><label class="field-label">Pertanyaan</label><input type="text" id="faq-q" placeholder="Contoh: Apakah script ini aman?"></div>
+        <div class="field"><label class="field-label">Jawaban</label><textarea id="faq-a" rows="3" style="color:#fff;font-family:inherit;font-size:12.5px;" placeholder="Tulis jawaban di sini..."></textarea></div>
+        <button class="btn btn-primary" onclick="addFaq()"><i class="fa-solid fa-plus"></i> Tambah FAQ</button>
+      </div>
+      <div class="card">
+        <h2><i class="fa-solid fa-list"></i> FAQ Aktif</h2>
+        <div id="faq-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ADMIN_PASS = 'panjijtp2';
+
+function checkAuth() {
+  const val = document.getElementById('auth-pass').value;
+  if (val === ADMIN_PASS) {
+    sessionStorage.setItem('xtray_admin_auth', 'true');
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('main-panel').style.display = 'block';
+    initApp();
+  } else {
+    document.getElementById('auth-err').style.display = 'block';
+  }
+}
+function logout() { sessionStorage.removeItem('xtray_admin_auth'); location.reload(); }
+
+if (sessionStorage.getItem('xtray_admin_auth') === 'true') {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('main-panel').style.display = 'block';
+  document.addEventListener('DOMContentLoaded', initApp);
+}
+
+function setPage(name, el) {
+  document.querySelectorAll('.ntab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-' + name).classList.add('active');
+}
+
+let db, initialized = false;
+let allFiles = {}, allDownloads = {}, allFeedback = {}, allCategories = {}, allFaq = {}, allChat = {};
+
+function initApp() {
+  if (initialized) return;
+  initialized = true;
+  const cfg = { databaseURL: "https://xtray-files-default-rtdb.asia-southeast1.firebasedatabase.app/" };
+  if (!firebase.apps.length) firebase.initializeApp(cfg);
+  db = firebase.database();
+
+  db.ref('xtray_files').on('value', s => {
+    allFiles = s.val() || {};
+    document.getElementById('st-files').innerText = Object.keys(allFiles).length;
+    renderDb();
+  });
+
+  db.ref('xtray_downloads').on('value', s => {
+    allDownloads = s.val() || {};
+    document.getElementById('st-downloads').innerText = Object.keys(allDownloads).length;
+  });
+
+  db.ref('xtray_feedback').on('value', s => {
+    allFeedback = s.val() || {};
+    document.getElementById('st-inbox').innerText = Object.keys(allFeedback).length;
+    renderInbox();
+  });
+
+  db.ref('xtray_categories').on('value', s => {
+    allCategories = s.val() || {};
+    renderCategories();
+  });
+
+  db.ref('xtray_faq').on('value', s => {
+    allFaq = s.val() || {};
+    renderFaq();
+  });
+
+  db.ref('xtray_chat').on('value', s => {
+    allChat = s.val() || {};
+    renderChat();
+  });
+
+  db.ref('xtray_config').on('value', s => {
+    const c = s.val() || {};
+    document.getElementById('cfg-maintenance').checked = !!c.maintenance;
+    document.getElementById('cfg-maintenance-msg').value = c.maintenanceMsg || '';
+    document.g
