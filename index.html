@@ -196,7 +196,7 @@ input:checked + .slider:before { transform: translateX(18px); }
     <div class="auth-icon"><i class="fa-solid fa-shield-halved"></i></div>
     <h1>Xtray Admin</h1>
     <p>Masukkan Password Untuk Akses</p>
-    <input type="password" id="auth-pass" placeholder="Password..." onkeydown="if(event.key==='Enter')checkAuth()">
+    <input type="password" id="auth-pass" placeholder="Password..." autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkAuth()">
     <button onclick="checkAuth()">Masuk</button>
     <p id="auth-err" class="auth-err">Password salah! Coba lagi.</p>
   </div>
@@ -346,7 +346,7 @@ input:checked + .slider:before { transform: translateX(18px); }
 const ADMIN_PASS = 'panjijtp2';
 
 function checkAuth() {
-  const val = document.getElementById('auth-pass').value;
+  const val = document.getElementById('auth-pass').value.trim();
   if (val === ADMIN_PASS) {
     sessionStorage.setItem('xtray_admin_auth', 'true');
     document.getElementById('auth-screen').style.display = 'none';
@@ -417,4 +417,150 @@ function initApp() {
     const c = s.val() || {};
     document.getElementById('cfg-maintenance').checked = !!c.maintenance;
     document.getElementById('cfg-maintenance-msg').value = c.maintenanceMsg || '';
-    document.g
+    document.getElementById('cfg-marquee').value = c.marquee || '';
+  });
+}
+
+/* ---- CONFIG ---- */
+function saveConfig() {
+  db.ref('xtray_config').set({
+    maintenance: document.getElementById('cfg-maintenance').checked,
+    maintenanceMsg: document.getElementById('cfg-maintenance-msg').value.trim(),
+    marquee: document.getElementById('cfg-marquee').value.trim()
+  }).then(() => alert('Konfigurasi tersimpan!'));
+}
+
+/* ---- CATEGORIES ---- */
+function addCategory() {
+  const input = document.getElementById('new-category');
+  if (!input.value.trim()) return;
+  db.ref('xtray_categories').push(input.value.trim());
+  input.value = '';
+}
+function renderCategories() {
+  const list = document.getElementById('category-list');
+  const select = document.getElementById('up-category');
+  list.innerHTML = ''; select.innerHTML = '<option value="">Tanpa Kategori</option>';
+  Object.entries(allCategories).forEach(([key, val]) => {
+    list.innerHTML += `<div class="chip">${val}<button onclick="db.ref('xtray_categories').child('${key}').remove()"><i class="fa-solid fa-xmark"></i></button></div>`;
+    select.innerHTML += `<option value="${val}">${val}</option>`;
+  });
+}
+
+/* ---- FILES / SCRIPTS ---- */
+function publishFile() {
+  const name = document.getElementById('up-name').value.trim();
+  const desc = document.getElementById('up-desc').value.trim();
+  const type = document.getElementById('up-type').value;
+  const category = document.getElementById('up-category').value;
+  const size = document.getElementById('up-size').value;
+  const version = document.getElementById('up-version').value.trim();
+  const link = document.getElementById('up-link').value.trim();
+  if (!name || !link) return alert('Nama dan Link Download wajib diisi!');
+
+  db.ref('xtray_files').push({
+    name, desc, type, category, size, version, link, timestamp: Date.now()
+  }).then(() => {
+    alert('Berhasil dipublish!');
+    ['up-name','up-desc','up-version','up-link'].forEach(id => document.getElementById(id).value = '');
+  });
+}
+
+function renderDb() {
+  const div = document.getElementById('db-list');
+  const q = (document.getElementById('db-search').value || '').toLowerCase();
+  const entries = Object.entries(allFiles).filter(([k,v]) => (v.name||'').toLowerCase().includes(q)).reverse();
+  if (!entries.length) { div.innerHTML = '<div class="empty">Belum ada file</div>'; return; }
+  div.innerHTML = entries.map(([key,f]) => `
+    <div class="list-item">
+      <div class="top">
+        <div>
+          <div class="name">${f.name}</div>
+          <div class="meta">${(f.type||'file').toUpperCase()} • ${f.category||'Tanpa kategori'} • ${f.size||'-'}</div>
+        </div>
+        <button class="mini-btn del" onclick="if(confirm('Hapus file ini?')) db.ref('xtray_files').child('${key}').remove()">Hapus</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function backupJson() {
+  const blob = new Blob([JSON.stringify(allFiles, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'xtray_files_backup.json';
+  a.click();
+}
+
+/* ---- LIVE CHAT ---- */
+function sendChat() {
+  const input = document.getElementById('chat-msg');
+  const msg = input.value.trim();
+  if (!msg) return;
+  db.ref('xtray_chat').push({ sender: 'Admin', message: msg, isAdmin: true, timestamp: Date.now() });
+  input.value = '';
+}
+function wipeChat() {
+  if (confirm('Hapus semua pesan chat?')) db.ref('xtray_chat').remove();
+}
+function renderChat() {
+  const box = document.getElementById('chat-box');
+  const entries = Object.entries(allChat);
+  if (!entries.length) { box.innerHTML = '<div class="empty">Belum ada pesan</div>'; return; }
+  box.innerHTML = entries.map(([key,m]) => `
+    <div class="msg ${m.isAdmin ? 'admin' : 'user'}">
+      <button class="del-x" onclick="db.ref('xtray_chat').child('${key}').remove()">✕</button>
+      <div class="who">${m.sender || 'User'}</div>
+      ${m.message}
+    </div>
+  `).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+/* ---- INBOX (feedback: saran & lapor) ---- */
+function renderInbox() {
+  const div = document.getElementById('inbox-list');
+  const entries = Object.entries(allFeedback).reverse();
+  if (!entries.length) { div.innerHTML = '<div class="empty">Tidak ada pesan masuk</div>'; return; }
+  div.innerHTML = entries.map(([key,f]) => `
+    <div class="list-item">
+      <div class="top">
+        <div>
+          <span class="badge-type ${f.type==='lapor'?'badge-lapor':'badge-saran'}">${f.type==='lapor'?'🚨 Laporan':'💡 Saran'}</span>
+          <div class="meta" style="margin-top:6px;color:#ccc;font-size:11px;font-weight:500;">${f.message}</div>
+        </div>
+        <button class="mini-btn done" onclick="db.ref('xtray_feedback').child('${key}').remove()">Selesai</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ---- FAQ ---- */
+function addFaq() {
+  const q = document.getElementById('faq-q').value.trim();
+  const a = document.getElementById('faq-a').value.trim();
+  if (!q || !a) return alert('Pertanyaan dan jawaban wajib diisi!');
+  db.ref('xtray_faq').push({ question: q, answer: a, timestamp: Date.now() }).then(() => {
+    document.getElementById('faq-q').value = '';
+    document.getElementById('faq-a').value = '';
+  });
+}
+function renderFaq() {
+  const div = document.getElementById('faq-list');
+  const entries = Object.entries(allFaq).reverse();
+  if (!entries.length) { div.innerHTML = '<div class="empty">Belum ada FAQ</div>'; return; }
+  div.innerHTML = entries.map(([key,f]) => `
+    <div class="list-item">
+      <div class="top">
+        <div>
+          <div class="name">${f.question}</div>
+          <div class="meta" style="color:#aaa;font-size:11px;margin-top:4px;">${f.answer}</div>
+        </div>
+        <button class="mini-btn del" onclick="if(confirm('Hapus FAQ ini?')) db.ref('xtray_faq').child('${key}').remove()">Hapus</button>
+      </div>
+    </div>
+  `).join('');
+}
+</script>
+</body>
+</html>
