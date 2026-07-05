@@ -170,6 +170,13 @@ input:checked + .slider:before { transform: translateX(18px); }
 
 .empty { text-align: center; padding: 26px 10px; color: #666; font-size: 11px; font-weight: 600; }
 
+.breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 10px; }
+.breadcrumb .crumb { cursor: pointer; color: #a855f7; font-weight: 700; }
+.breadcrumb .crumb.current { color: #eee; cursor: default; }
+.breadcrumb .sep { color: #555; }
+.folder-row { cursor: pointer; display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.folder-row .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* CHAT */
 .chat-box { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
 .msg { max-width: 80%; padding: 8px 11px; border-radius: 12px; font-size: 11.5px; position: relative; }
@@ -214,7 +221,7 @@ input:checked + .slider:before { transform: translateX(18px); }
       </div>
     </div>
     <div class="header-actions">
-      <a href="https://xtray-site.netlify.app" target="_blank" class="hbtn"><i class="fa-solid fa-arrow-up-right-from-square"></i> Lihat Web</a>
+      <a href="https://xtray.netlify.app" target="_blank" class="hbtn"><i class="fa-solid fa-arrow-up-right-from-square"></i> Lihat Web</a>
       <button onclick="logout()" class="hbtn danger"><i class="fa-solid fa-right-from-bracket"></i></button>
     </div>
   </header>
@@ -261,27 +268,40 @@ input:checked + .slider:before { transform: translateX(18px); }
     <!-- PAGE: KELOLA SKRIP -->
     <div class="page" id="page-skrip">
       <div class="card">
+        <h2><i class="fa-solid fa-folder-open"></i> File Manager</h2>
+        <div class="field">
+          <label class="field-label">Tipe</label>
+          <select id="fm-type" onchange="fmChangeType()"><option value="script">📜 Script</option><option value="executor">⚡ Executor</option><option value="cheat">🎮 Cheat</option><option value="file">📄 File</option></select>
+        </div>
+        <div class="breadcrumb" id="fm-breadcrumb"></div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input type="text" id="fm-new-folder" placeholder="Nama folder baru..." style="flex:1;">
+          <button class="btn btn-purple" style="width:auto;padding:0 16px;" onclick="fmCreateFolder()"><i class="fa-solid fa-folder-plus"></i></button>
+        </div>
+        <div id="fm-list"></div>
+      </div>
+
+      <div class="card">
         <h2><i class="fa-solid fa-cloud-arrow-up"></i> Upload Script / File Baru</h2>
+        <div class="field">
+          <label class="field-label">Upload Ke Folder</label>
+          <div class="breadcrumb" id="fm-upload-target"></div>
+        </div>
         <div class="field"><label class="field-label">Nama</label><input type="text" id="up-name" placeholder="Nama script / file"></div>
         <div class="field"><label class="field-label">Deskripsi</label><input type="text" id="up-desc" placeholder="Deskripsi singkat"></div>
         <div class="row2">
           <div class="field">
-            <label class="field-label">Tipe</label>
-            <select id="up-type"><option value="script">📜 Script</option><option value="executor">⚡ Executor</option><option value="cheat">🎮 Cheat</option><option value="file">📄 File</option></select>
-          </div>
-          <div class="field">
             <label class="field-label">Kategori Game</label>
             <select id="up-category"></select>
           </div>
-        </div>
-        <div class="row2">
           <div class="field">
             <label class="field-label">Ukuran</label>
             <select id="up-size"><option value="Kecil">Kecil</option><option value="Sedang">Sedang</option><option value="Besar">Besar</option></select>
           </div>
-          <div class="field"><label class="field-label">Versi (opsional)</label><input type="text" id="up-version" placeholder="v1.0.0"></div>
         </div>
-        <div class="field"><label class="field-label">Link Download</label><input type="text" id="up-link" placeholder="https://..."></div>
+        <div class="field"><label class="field-label">Versi (opsional)</label><input type="text" id="up-version" placeholder="v1.0.0"></div>
+        <div class="field" id="field-link" style="display:none;"><label class="field-label">Link Download</label><input type="text" id="up-link" placeholder="https://..."></div>
+        <div class="field" id="field-code"><label class="field-label">Script / Loadstring</label><textarea id="up-code" rows="4" placeholder='loadstring(game:HttpGet(&quot;https://...&quot;))()' style="color:#86efac;"></textarea></div>
         <button class="btn btn-primary" onclick="publishFile()"><i class="fa-solid fa-cloud-arrow-up"></i> Publish</button>
       </div>
 
@@ -295,9 +315,9 @@ input:checked + .slider:before { transform: translateX(18px); }
       </div>
 
       <div class="card">
-        <h2><i class="fa-solid fa-database"></i> Database Skrip</h2>
+        <h2><i class="fa-solid fa-database"></i> Cari Semua File (Global)</h2>
         <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <input type="text" id="db-search" placeholder="Cari nama file..." oninput="renderDb()" style="flex:1;">
+          <input type="text" id="db-search" placeholder="Cari nama file di semua folder..." oninput="renderDb()" style="flex:1;">
           <button class="btn btn-outline" style="width:auto;padding:0 14px;" onclick="backupJson()"><i class="fa-solid fa-download"></i></button>
         </div>
         <div id="db-list"></div>
@@ -372,7 +392,8 @@ function setPage(name, el) {
 }
 
 let db, initialized = false;
-let allFiles = {}, allDownloads = {}, allFeedback = {}, allCategories = {}, allFaq = {}, allChat = {};
+let allFiles = {}, allDownloads = {}, allFeedback = {}, allCategories = {}, allFaq = {}, allChat = {}, allFolders = {};
+let fmPath = [];
 
 function initApp() {
   if (initialized) return;
@@ -385,6 +406,12 @@ function initApp() {
     allFiles = s.val() || {};
     document.getElementById('st-files').innerText = Object.keys(allFiles).length;
     renderDb();
+    renderFM();
+  });
+
+  db.ref('xtray_folders').on('value', s => {
+    allFolders = s.val() || {};
+    renderFM();
   });
 
   db.ref('xtray_downloads').on('value', s => {
@@ -447,22 +474,134 @@ function renderCategories() {
   });
 }
 
+/* ---- FILE MANAGER (FOLDERS) ---- */
+function fmCurrentId() { return fmPath.length ? fmPath[fmPath.length-1].id : 'root'; }
+
+function fmChangeType() {
+  const isScript = document.getElementById('fm-type').value === 'script';
+  document.getElementById('field-link').style.display = isScript ? 'none' : 'block';
+  document.getElementById('field-code').style.display = isScript ? 'block' : 'none';
+  fmPath = [];
+  renderFM();
+}
+
+function fmOpenFolder(id, name) {
+  fmPath.push({ id, name });
+  renderFM();
+}
+
+function fmBreadcrumbGo(index) {
+  fmPath = index < 0 ? [] : fmPath.slice(0, index+1);
+  renderFM();
+}
+
+function fmCreateFolder() {
+  const input = document.getElementById('fm-new-folder');
+  const name = input.value.trim();
+  if (!name) return;
+  const type = document.getElementById('fm-type').value;
+  db.ref('xtray_folders').push({ name, type, parentId: fmCurrentId(), timestamp: Date.now() });
+  input.value = '';
+}
+
+function fmDeleteFolder(id, name) {
+  const hasSubfolder = Object.values(allFolders).some(f => (f.parentId||'root') === id);
+  const hasFile = Object.values(allFiles).some(f => (f.folderId||'root') === id);
+  if (hasSubfolder || hasFile) { alert('Folder "'+name+'" tidak kosong! Kosongkan dulu isinya sebelum dihapus.'); return; }
+  if (confirm('Hapus folder "'+name+'"?')) db.ref('xtray_folders').child(id).remove();
+}
+
+function fmDeleteFile(id) {
+  if (confirm('Hapus file ini?')) db.ref('xtray_files').child(id).remove();
+}
+
+function fmBreadcrumbHtml() {
+  let html = '<span class="crumb'+(fmPath.length?'':' current')+'" onclick="fmBreadcrumbGo(-1)">🏠 Home</span>';
+  fmPath.forEach((p,i) => {
+    html += '<span class="sep">/</span><span class="crumb'+(i===fmPath.length-1?' current':'')+'" onclick="fmBreadcrumbGo('+i+')">'+p.name+'</span>';
+  });
+  return html;
+}
+
+function renderFM() {
+  const type = document.getElementById('fm-type').value;
+  const fid = fmCurrentId();
+  const bcHtml = fmBreadcrumbHtml();
+  document.getElementById('fm-breadcrumb').innerHTML = bcHtml;
+  document.getElementById('fm-upload-target').innerHTML = bcHtml;
+
+  const folders = Object.entries(allFolders).filter(([k,f]) => f.type===type && (f.parentId||'root')===fid);
+  const files = Object.entries(allFiles).filter(([k,f]) => f.type===type && (f.folderId||'root')===fid);
+
+  const div = document.getElementById('fm-list');
+  if (!folders.length && !files.length) { div.innerHTML = '<div class="empty">Folder ini kosong</div>'; return; }
+
+  let html = '';
+  folders.forEach(([key,f]) => {
+    const safe = (f.name||'').replace(/'/g,"\\'");
+    html += `
+    <div class="list-item">
+      <div class="top">
+        <div class="folder-row" onclick="fmOpenFolder('${key}','${safe}')">
+          <span style="font-size:16px;">📁</span>
+          <div class="name">${f.name}</div>
+        </div>
+        <button class="mini-btn del" onclick="event.stopPropagation();fmDeleteFolder('${key}','${safe}')">Hapus</button>
+      </div>
+    </div>`;
+  });
+  files.forEach(([key,f]) => {
+    html += `
+    <div class="list-item">
+      <div class="top">
+        <div>
+          <div class="name">${f.name}</div>
+          <div class="meta">${(f.type||'file').toUpperCase()} • ${f.category||'Tanpa kategori'} • ${f.size||'-'}</div>
+        </div>
+        <button class="mini-btn del" onclick="fmDeleteFile('${key}')">Hapus</button>
+      </div>
+    </div>`;
+  });
+  div.innerHTML = html;
+}
+
+function folderPathString(fid) {
+  if (!fid || fid === 'root') return 'Home';
+  const chain = [];
+  let cur = fid, guard = 0;
+  while (cur && cur !== 'root' && guard < 25) {
+    const f = allFolders[cur];
+    if (!f) break;
+    chain.unshift(f.name);
+    cur = f.parentId || 'root';
+    guard++;
+  }
+  return 'Home / ' + chain.join(' / ');
+}
+
 /* ---- FILES / SCRIPTS ---- */
 function publishFile() {
   const name = document.getElementById('up-name').value.trim();
   const desc = document.getElementById('up-desc').value.trim();
-  const type = document.getElementById('up-type').value;
+  const type = document.getElementById('fm-type').value;
   const category = document.getElementById('up-category').value;
   const size = document.getElementById('up-size').value;
   const version = document.getElementById('up-version').value.trim();
+  const isScript = type === 'script';
   const link = document.getElementById('up-link').value.trim();
-  if (!name || !link) return alert('Nama dan Link Download wajib diisi!');
+  const code = document.getElementById('up-code').value.trim();
+  const folderId = fmCurrentId();
 
-  db.ref('xtray_files').push({
-    name, desc, type, category, size, version, link, timestamp: Date.now()
-  }).then(() => {
-    alert('Berhasil dipublish!');
-    ['up-name','up-desc','up-version','up-link'].forEach(id => document.getElementById(id).value = '');
+  if (!name) return alert('Nama wajib diisi!');
+  if (isScript && !code) return alert('Script / Loadstring wajib diisi!');
+  if (!isScript && !link) return alert('Link Download wajib diisi!');
+
+  const payload = { name, desc, type, category, size, version, folderId, timestamp: Date.now() };
+  if (isScript) payload.code = code; else payload.link = link;
+
+  db.ref('xtray_files').push(payload).then(() => {
+    alert('Berhasil dipublish ke folder ini!');
+    ['up-name','up-desc','up-version','up-link','up-code'].forEach(id => document.getElementById(id).value = '');
   });
 }
 
@@ -476,7 +615,7 @@ function renderDb() {
       <div class="top">
         <div>
           <div class="name">${f.name}</div>
-          <div class="meta">${(f.type||'file').toUpperCase()} • ${f.category||'Tanpa kategori'} • ${f.size||'-'}</div>
+          <div class="meta">${(f.type||'file').toUpperCase()} • ${folderPathString(f.folderId)} • ${f.size||'-'}</div>
         </div>
         <button class="mini-btn del" onclick="if(confirm('Hapus file ini?')) db.ref('xtray_files').child('${key}').remove()">Hapus</button>
       </div>
